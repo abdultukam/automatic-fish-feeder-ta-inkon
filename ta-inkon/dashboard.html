@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feeder / Control Panel</title>
+  <meta name="description" content="Minimalist control panel for ESP32 automatic fish feeder.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #18181b;
+      --border: #27272a;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #52525b;
+      --accent: #ffffff;
+      --accent-bg: #ffffff;
+      --accent-text: #09090b;
+
+      --status-online: #22c55e;
+      --status-feeding: #eab308;
+      --status-offline: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-primary);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 4px;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-primary);
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+    }
+
+    .clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Status Grid */
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .status-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .status-card-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .status-card-value {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feed-count-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .status-indicator-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: background-color 0.3s, box-shadow 0.3s;
+    }
+
+    .status-indicator-dot.online {
+      background: var(--status-online);
+      box-shadow: 0 0 8px var(--status-online);
+    }
+
+    .status-indicator-dot.feeding {
+      background: var(--status-feeding);
+      box-shadow: 0 0 8px var(--status-feeding);
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0.4;
+      }
+    }
+
+    /* Panel Styles */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    /* Control Group */
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .selector-row {
+      display: flex;
+      background: #0f0f11;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px;
+    }
+
+    .selector-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 8px 0;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .selector-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .selector-btn.active {
+      background: var(--border);
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .action-btn {
+      background: var(--accent-bg);
+      color: var(--accent-text);
+      border: none;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .action-btn:hover {
+      opacity: 0.9;
+    }
+
+    .action-btn:disabled {
+      background: var(--border);
+      color: var(--text-muted);
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    /* Schedule Bar */
+    .schedule-bar {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      padding-top: 14px;
+    }
+
+    .schedule-pill {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    /* History List */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      list-style: none;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid rgba(255, 255, 255, 0.02);
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .history-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .tag-feeding_start {
+      background: rgba(234, 179, 8, 0.08);
+      color: var(--status-feeding);
+    }
+
+    .tag-feeding_done {
+      background: rgba(34, 197, 94, 0.08);
+      color: var(--status-online);
+    }
+
+    .tag-schedule {
+      background: rgba(59, 130, 246, 0.08);
+      color: #3b82f6;
+    }
+
+    .tag-boot {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+    }
+
+    .history-time {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    .history-detail {
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .empty-history {
+      color: var(--text-muted);
+      font-size: 11px;
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 8px 14px;
+      border-radius: 4px;
+      font-size: 11px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="container">
+    <header>
+      <div class="logo-area">
+        <div class="logo-dot"></div>
+        <h1>Feeder Control</h1>
+      </div>
+      <div class="clock" id="clock">--:--:--</div>
+    </header>
+
+    <section class="status-grid">
+      <div class="status-card">
+        <h2 class="status-card-label">Device Status</h2>
+        <div class="status-card-value">
+          <span class="status-indicator-dot" id="dot"></span>
+          <span id="status-label">Connecting...</span>
+        </div>
+      </div>
+      <div class="status-card">
+        <h2 class="status-card-label">Feeds Today</h2>
+        <div class="status-card-value">
+          <span class="feed-count-val" id="feed-count">0</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Dispenser Control</h2>
+
+      <div class="control-group">
+        <div class="selector-row">
+          <button class="selector-btn" data-angle="30" onclick="setAngle(30)">30° Light</button>
+          <button class="selector-btn active" data-angle="50" onclick="setAngle(50)">50° Medium</button>
+          <button class="selector-btn" data-angle="80" onclick="setAngle(80)">80° Full</button>
+        </div>
+      </div>
+
+      <button class="action-btn" id="feed-btn" onclick="triggerFeed()">Dispense Feed (3s)</button>
+
+      <div class="schedule-bar">
+        <span class="schedule-pill">⏰ Auto: 09:00</span>
+        <span class="schedule-pill">⏰ Auto: 13:00</span>
+        <span class="schedule-pill">⏰ Auto: 20:00</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Activity Log</h2>
+      <ul class="history-list" id="log-list">
+        <li class="empty-history">No activity logged yet</li>
+      </ul>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const apiHost = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+    let selectedAngle = 50;
+    let feedCount = 0;
+    let lastTodayDate = new Date().toDateString();
+
+    function setAngle(a) {
+      selectedAngle = a;
+      document.querySelectorAll('.selector-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.angle) === a);
+      });
+    }
+
+    async function triggerFeed() {
+      const btn = document.getElementById('feed-btn');
+      btn.disabled = true;
+      btn.textContent = 'Queuing...';
+      try {
+        const r = await fetch(`${apiHost}/feed`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ angle: selectedAngle })
+        });
+        const d = await r.json();
+        if (d.ok) {
+          showToast('Feed command queued — ESP32 will pick it up within 2 sec');
+          btn.textContent = 'Queued ✓';
+          setTimeout(() => { btn.textContent = 'Dispense Feed (3s)'; btn.disabled = false; }, 3000);
+        }
+      } catch {
+        showToast('Could not reach server');
+        btn.textContent = 'Dispense Feed (3s)';
+        btn.disabled = false;
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    async function pollLog() {
+      try {
+        const r = await fetch(`${apiHost}/log`);
+        const data = await r.json();
+
+        const isArray = Array.isArray(data);
+        const log = isArray ? data : (data.log || []);
+        const lastSeenAgo = isArray ? -1 : (data.lastSeenAgo !== undefined ? data.lastSeenAgo : -1);
+        const serverTime = isArray ? Date.now() : (data.serverTime || Date.now());
+
+        // Status indicator
+        const dot = document.getElementById('dot');
+        const label = document.getElementById('status-label');
+        const isFeeding = log.length > 0 && log[0].type === 'feeding_start' &&
+          (serverTime - log[0].ts) < 8000;
+        const isAlive = lastSeenAgo >= 0 && lastSeenAgo < 15000;
+
+        if (isFeeding) {
+          dot.className = 'status-indicator-dot feeding';
+          label.textContent = 'Feeding...';
+          document.getElementById('feed-btn').disabled = true;
+        } else if (isAlive) {
+          dot.className = 'status-indicator-dot online';
+          label.textContent = 'Online';
+          document.getElementById('feed-btn').disabled = false;
+          document.getElementById('feed-btn').textContent = 'Dispense Feed (3s)';
+        } else {
+          dot.className = 'status-indicator-dot';
+          label.textContent = lastSeenAgo === -1 ? 'Waiting for ESP32...' : 'Possibly offline';
+        }
+
+        // Feed count (today)
+        const today = new Date().toDateString();
+        if (today !== lastTodayDate) { feedCount = 0; lastTodayDate = today; }
+        feedCount = log.filter(e =>
+          (e.type === 'feeding_done' || e.type === 'schedule') &&
+          new Date(e.ts).toDateString() === today
+        ).length;
+        document.getElementById('feed-count').textContent = feedCount;
+
+        // Render log
+        const ul = document.getElementById('log-list');
+        if (log.length === 0) {
+          ul.innerHTML = '<li class="empty-history">No activity logged yet</li>';
+          return;
+        }
+        ul.innerHTML = log.slice(0, 10).map(e => `
+        <li class="history-item">
+          <span class="history-tag tag-${e.type}">${e.type.replace('_', ' ')}</span>
+          ${e.angle > 0 ? `<span class="history-detail">${e.angle}°</span>` : ''}
+          <span class="history-time">${e.time}</span>
+        </li>
+      `).join('');
+      } catch {
+        // Server not reachable — show nothing
+      }
+    }
+
+    // Live clock
+    function tick() {
+      document.getElementById('clock').textContent =
+        new Date().toLocaleTimeString('id-ID', { hour12: false });
+    }
+    tick();
+    setInterval(tick, 1000);
+    setInterval(pollLog, 2000);
+    pollLog();
+  </script>
+</body>
+
+</html>
